@@ -63,22 +63,33 @@
         //좌측의 글등록 디자인을 컴포넌트화 시켜놓은 RegistForm
         //개발자가 컴포넌트 안에  매개변수로 전달할 수 잇는 데이터를 가리켜 props 라 부른다
         function RegistForm(props){
+            const [title, setTitle] = React.useState("");
+            const [writer, setWriter] = React.useState("");
+            const [content, setContent] = React.useState("");
             
             //아래의 메서드에서 서버에 요청 로직을 작성할 수도 있지만, 우리는 SPA(Single Page Application=새로고침없는 사이트)
             //예정이므로, 게시물 등록에서 끝나는 것이 아니라, 목록, 상세, 수정, 삭제 요청을 하려면 변수 또는 메서드가 서로 공유되어야 
             //개발이 편하다. 따라서 변수, 메서드를 자식 컴포넌트에 로직을 두지 않고, 부모 컴포넌트에 둬야 개발이 용이함..
             function handleClick(){
+
+                //글등록 요청시 넘게될 notice 생성 
+                const notice={
+                    title:title,
+                    writer:writer,
+                    content:content
+                }    
+
                 //자식 컴포넌트는 부모의 메서드를 직접 접근할 수 없다...
                 //해결책은? 자식 컴포넌트에 props로 부모의 메서드명을 전달해주면 된다..즉 props를 이용한 정보 전달 방법을 사용 
-                props.onRegist();//부모 컴포넌트 메서드 호출 가능?//regist()
+                props.onRegist(notice);//부모 컴포넌트 메서드 호출 가능?//regist(notice)
             }   
 
             return (
                 <div className="aside">
                     <form>                        
-                        <input type="text" />
-                        <input type="text" />        
-                        <textarea></textarea>
+                        <input type="text" placeholder="제목 입력" onChange={ e=> setTitle(e.target.value) }/>
+                        <input type="text" placeholder="작성자 입력" onChange={ e=> setWriter(e.target.value) }/>        
+                        <textarea onChange={ e=> setContent(e.target.value) }></textarea>
                         <button type="button" onClick={handleClick}>{props.bt}</button>
                     </form>    
                 </div>
@@ -111,17 +122,41 @@
         //추후 개발시 공통의 메서드나 컴포넌트가 변수의 공유등에 아주 필수적임
         function App(){
 
+            //구조 분해 할당 
+            const [notice, setNotice] = React.useState({
+                 noticeId :"",
+                 title:"",
+                 writer:"",
+                 content:"",
+                 regdate:"",
+                 hit:0                
+            });
+
             /*---------------------------------------------
             서버에 비동기로 글 등록 요청             
             ---------------------------------------------*/
-            function regist(){
+            function regist(notice){
 
-                alert("나는 부모 컴포넌트인 App의 regist() 메서드 이다.");
+                //JQuery Ajax에 의존하지 않고, 브라우저 자체적으로 비동기 통신을 지원하는 기능이 fetch()
+                //alert("나는 부모 컴포넌트인 App의 regist() 메서드 이다.");
+                fetch("http://localhost:9999/api/notices", {
+                    method:"POST", 
+                    headers:{
+                        "Content-Type" : "application/json"
+                    },
+                    body:JSON.stringify(notice) //마치 백엔드 스프링서버의 jackson과 비슷..
+                })
+                .then(res => res.json())
+                .then(savedNotice => {
+                    console.log("savedNotice is {}", savedNotice);
+                })
+                .catch(err => console.log(err)); 
+
             }
 
             return (
                 <div id="wrapper">
-                    <RegistForm bt="공지등록" onRegist="regist" />
+                    <RegistForm bt="공지등록" onRegist={regist} />
                     <NoticeList />
                     <DetailForm />
                 </div>
