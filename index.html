@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+     <style>
+        body{
+            margin: 0px;
+        }
+        #app{
+            width:100%;
+            height:800px;
+            background-color: antiquewhite;
+        }
+        .aside{
+            width: 20%;
+            height: 100%;
+            background-color: aqua;
+            float:left;
+        }
+        .aside *{
+            width: 90%;
+            margin:5px;
+        }
+        textarea{
+            height:150px;
+        }
+        .content{
+            width: 60%;
+            height:100%;
+            float: left;
+        }
+        .detail{
+            width: 20%;
+            height: 100%;
+            background-color: beige;
+            float: left;
+        }
+        .detail *{
+            width: 90%;
+            margin:5px;            
+        }
+     </style>
+     <script>
+        /*
+        React 의 2가지 개발 방식 
+        1) Vite 프로젝트 개발방식 :  실제 Production 모드, 규모가 클 경우
+
+        2) CDN 링크 방식 : 학습, 연구 , 테스트 목적, 규모가 작을 경우 
+        */
+     </script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div class="aside">
+            <form>                        
+                <input type="text">
+                <input type="text">        
+                <textarea></textarea>
+                <button type="button">등록</button>
+            </form>    
+        </div>
+        <div class="content"></div>
+        <div class="detail">
+            <form>                        
+                <input type="text">
+                <input type="text">        
+                <textarea></textarea>
+                <button type="button" style="width:45%">수정</button>
+                <button type="button" style="width:45%">삭제</button>
+            </form>    
+        </div>
+    </div>
+
+</body>
+</html>
