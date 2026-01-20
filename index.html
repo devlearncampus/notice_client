@@ -41,6 +41,16 @@
             width: 90%;
             margin:5px;            
         }
+        table{
+            border-collapse: collapse;
+            width:100%;
+        }
+        table, th, td{
+            border:1px solid #ccc;
+        }
+        th, td{
+            padding:8px;
+        }
      </style>
      <script>
         /*
@@ -97,9 +107,38 @@
         }
 
         //가운데 게시물 목록이 나올 영역을 컴포넌트로 정의 
-        function NoticeList(){
+        function NoticeList(props){//자식 컴포넌트가 부모 컴포넌트의 변수, 메서드를 직접 접근할 수 없으므로, 주로 props를 이용하여
+            //전달 받자..여기서는 noticeList를 전달받을 예정임..
             return (
-                <div className="content"></div>
+                <div className="content">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>제목</th>
+                                <th>작성자</th>
+                                <th>등록일</th>
+                                <th>조회수</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {/* map()은 어디서 온건가? js의 배열 메서드 중 하나.. 선언적 프로그래밍 중 함수형 프로그래밍의 원칙 적용 
+                                눈에 보이지 않지만, 반복문을 스스로 수행함 , 개발자는 몇번째 반복인지 중간에 개입불가..개발자는 그냥 
+                                어떤 업무를 원하는지 선언만 하는 프로그래밍 방식..
+                            */}
+                            { props.noticeList.map( notice => (
+                                <tr key={notice.noticeId} onClick={ ()=> props.onSelectOne() }>
+                                    <td>sdf</td>                                    
+                                    <td>{notice.title}</td>
+                                    <td>{notice.writer}</td>
+                                    <td>{notice.regdate}</td>
+                                    <td>{notice.hit}</td>
+                                </tr>
+                                 ))
+                            }    
+                        </tbody>        
+                    </table>                            
+                </div>
             );
         }
 
@@ -121,7 +160,9 @@
         //자식 컴포넌트들을 조합하기 위한 부모 컴포넌트 정의 
         //추후 개발시 공통의 메서드나 컴포넌트가 변수의 공유등에 아주 필수적임
         function App(){
-
+            //서버로부터 가져온 목록데이터를 화면에 표시할 UI와 엮게될 바인딩 변수 선언 
+            const [noticeList, setNoticeList]=React.useState([]);
+            
             //구조 분해 할당 
             const [notice, setNotice] = React.useState({
                  noticeId :"",
@@ -131,6 +172,23 @@
                  regdate:"",
                  hit:0                
             });
+
+            /*---------------------------------------------
+            목록 가져오기 
+            컴포넌트가 렌더링(화면에 등장) 된 직후에  실행해야 할 업무를 부수효과(side effect)를 다룰때 자주 사용되는 메서드 
+            예) 렌더링 직후 서버 호출, DOM 접근 등.. 화면에 렌더링 직후 1회만 실행
+            ---------------------------------------------*/
+            React.useEffect(()=>{
+                fetch("http://localhost:9999/api/notices", {method:"GET"})
+                .then(res=>res.json())//첫번째 then() 서버에서 응답이 왔을때 수행됨 (단 이 응답이 성공인지 실패인지는 모름)
+                           //만일 성공했다면, 서버로 부터 전달된 데이터는 아직 json문자열 형태가 아니므로, json문자열로 변경해보자    
+                .then(data =>{ //여기서의 data는 첫번째 then에서 반환된 Promise가 resolve하면서 넘겨준 값
+                    console.log("서버로 부터 받은 데이터는 ", data);
+                    setNoticeList(data);
+                })
+                .catch(err => console.log(er));
+            }, []);
+
 
             /*---------------------------------------------
             서버에 비동기로 글 등록 요청             
@@ -154,10 +212,19 @@
 
             }
 
+            /*---------------------------------------------
+            상세보기
+            ---------------------------------------------*/
+            function selectOne(){
+                alert("부모인 App의 메서드 호출 성공'");
+            }
+
+
+
             return (
                 <div id="wrapper">
                     <RegistForm bt="공지등록" onRegist={regist} />
-                    <NoticeList />
+                    <NoticeList noticeList={noticeList} onSelectOne={selectOne}/>
                     <DetailForm />
                 </div>
             )                
