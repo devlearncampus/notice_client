@@ -8,7 +8,7 @@
         body{
             margin: 0px;
         }
-        #app{
+        #wrapper{
             width:100%;
             height:800px;
             background-color: antiquewhite;
@@ -55,26 +55,85 @@
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 </head>
 <body>
-    <div id="app">
-        <div class="aside">
-            <form>                        
-                <input type="text">
-                <input type="text">        
-                <textarea></textarea>
-                <button type="button">등록</button>
-            </form>    
-        </div>
-        <div class="content"></div>
-        <div class="detail">
-            <form>                        
-                <input type="text">
-                <input type="text">        
-                <textarea></textarea>
-                <button type="button" style="width:45%">수정</button>
-                <button type="button" style="width:45%">삭제</button>
-            </form>    
-        </div>
-    </div>
+    <!-- 게시판 애플리케이션이 표현될 영역 -->
+    <div id="app"></div>
 
+    <script type="text/babel">
+
+        //좌측의 글등록 디자인을 컴포넌트화 시켜놓은 RegistForm
+        //개발자가 컴포넌트 안에  매개변수로 전달할 수 잇는 데이터를 가리켜 props 라 부른다
+        function RegistForm(props){
+            
+            //아래의 메서드에서 서버에 요청 로직을 작성할 수도 있지만, 우리는 SPA(Single Page Application=새로고침없는 사이트)
+            //예정이므로, 게시물 등록에서 끝나는 것이 아니라, 목록, 상세, 수정, 삭제 요청을 하려면 변수 또는 메서드가 서로 공유되어야 
+            //개발이 편하다. 따라서 변수, 메서드를 자식 컴포넌트에 로직을 두지 않고, 부모 컴포넌트에 둬야 개발이 용이함..
+            function handleClick(){
+                //자식 컴포넌트는 부모의 메서드를 직접 접근할 수 없다...
+                //해결책은? 자식 컴포넌트에 props로 부모의 메서드명을 전달해주면 된다..즉 props를 이용한 정보 전달 방법을 사용 
+                props.onRegist();//부모 컴포넌트 메서드 호출 가능?//regist()
+            }   
+
+            return (
+                <div className="aside">
+                    <form>                        
+                        <input type="text" />
+                        <input type="text" />        
+                        <textarea></textarea>
+                        <button type="button" onClick={handleClick}>{props.bt}</button>
+                    </form>    
+                </div>
+            );
+        }
+
+        //가운데 게시물 목록이 나올 영역을 컴포넌트로 정의 
+        function NoticeList(){
+            return (
+                <div className="content"></div>
+            );
+        }
+
+        //우측 게시물 내용이 나올 영역을 컴포넌트로 정의 
+        function DetailForm(){
+            return (
+                <div className="detail">
+                    <form>                        
+                        <input type="text" />
+                        <input type="text" />        
+                        <textarea></textarea>
+                        <button type="button" style={{width:"45%"}}>수정</button>
+                        <button type="button" style={{width:"45%"}}>삭제</button>
+                    </form>    
+                </div>
+            );            
+        }            
+
+        //자식 컴포넌트들을 조합하기 위한 부모 컴포넌트 정의 
+        //추후 개발시 공통의 메서드나 컴포넌트가 변수의 공유등에 아주 필수적임
+        function App(){
+
+            /*---------------------------------------------
+            서버에 비동기로 글 등록 요청             
+            ---------------------------------------------*/
+            function regist(){
+
+                alert("나는 부모 컴포넌트인 App의 regist() 메서드 이다.");
+            }
+
+            return (
+                <div id="wrapper">
+                    <RegistForm bt="공지등록" onRegist="regist" />
+                    <NoticeList />
+                    <DetailForm />
+                </div>
+            )                
+        }
+        const root=ReactDOM.createRoot(document.getElementById("app"));        
+        root.render( <App />);
+    </script>        
 </body>
 </html>
+
+
+
+
+
