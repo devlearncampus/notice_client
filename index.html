@@ -127,7 +127,7 @@
                                 어떤 업무를 원하는지 선언만 하는 프로그래밍 방식..
                             */}
                             { props.noticeList.map( notice => (
-                                <tr key={notice.noticeId} onClick={ ()=> props.onSelectOne() }>
+                                <tr key={notice.noticeId} onClick={ ()=> props.onSelectOne(notice) } style={{cursor:"pointer"}}>
                                     <td>sdf</td>                                    
                                     <td>{notice.title}</td>
                                     <td>{notice.writer}</td>
@@ -143,15 +143,35 @@
         }
 
         //우측 게시물 내용이 나올 영역을 컴포넌트로 정의 
-        function DetailForm(){
+        //자식 컴포넌트가 부모의 변수나 메서드를 접근하려면 props를 이용할 수 있다..
+        //현재 우리의 경우, 게시물 한건을 표현한  notice를 이 컴포넌트가 바인딩되어 바라보게 되면, 개발자가 notice정보를 변경만 해도
+        //자동으로 UI에 영향을 미친다...(리엑트, Vue를 사용하는 이유이다..즉 개발자가 데이터에만 집중하면 되고, UI를 수정하는데 
+        //노력을 쏟지말라 !!!)
+        function DetailForm(props){
+            
+            function handleEdit(){
+
+                const payload={
+                    title:"수정제목",
+                    writer:"수정한자",
+                    content:"수정내용 "    
+                }
+
+                props.onUpdate(payload); //props로 전달된  onUpdate 변수명이  update함수를 참조하므로...      
+            }
+            
+            function handleDelete(){
+
+            }
+
             return (
                 <div className="detail">
                     <form>                        
-                        <input type="text" />
-                        <input type="text" />        
-                        <textarea></textarea>
-                        <button type="button" style={{width:"45%"}}>수정</button>
-                        <button type="button" style={{width:"45%"}}>삭제</button>
+                        <input type="text" value={props.notice.title}/>
+                        <input type="text" value={props.notice.writer}/>        
+                        <textarea value={props.notice.content}></textarea>
+                        <button type="button" style={{width:"45%"}} onClick={handleEdit}>수정</button>
+                        <button type="button" style={{width:"45%"}} onClick={handleDelete}>삭제</button>
                     </form>    
                 </div>
             );            
@@ -172,7 +192,9 @@
                  regdate:"",
                  hit:0                
             });
-
+            function edit(){
+                
+            }                
             /*---------------------------------------------
             목록 가져오기 
             컴포넌트가 렌더링(화면에 등장) 된 직후에  실행해야 할 업무를 부수효과(side effect)를 다룰때 자주 사용되는 메서드 
@@ -186,7 +208,7 @@
                     console.log("서버로 부터 받은 데이터는 ", data);
                     setNoticeList(data);
                 })
-                .catch(err => console.log(er));
+                .catch(err => console.log(err));
             }, []);
 
 
@@ -207,6 +229,7 @@
                 .then(res => res.json())
                 .then(savedNotice => {
                     console.log("savedNotice is {}", savedNotice);
+     
                 })
                 .catch(err => console.log(err)); 
 
@@ -215,17 +238,37 @@
             /*---------------------------------------------
             상세보기
             ---------------------------------------------*/
-            function selectOne(){
-                alert("부모인 App의 메서드 호출 성공'");
+            function selectOne(notice){
+                //alert("부모인 App의 메서드 호출 성공'");
+                //1) db에서 다시 불러오기 
+
+                //2) 리스트 컴포넌트인 자식이, 현재 선택한 게시물 정보를 이쪽으로 넘김 
+                console.log("자식 컴포넌트로부터 전달된 notice is ", notice);
+                setNotice(notice);
             }
 
-
+            /*---------------------------------------------
+            수정하기
+            ---------------------------------------------*/
+            function update(payload){
+                //alert("부모컴포넌트인 App의 update() 호출");
+                console.log("수정할 내용은 ", payload);
+                
+                //웹브라우저에서 지원하는 비동기 통신 함수, 장점? 외부 라이브러리인 JQuery에 의존하지 않음 
+                /*
+                fetch("http://localhost:9999/api/notices", {
+                    method:"PUT",
+                    headers:{"Content-Type":"application/json"},
+                    body:JSON.stringify(payload)  //객체는 그 자체를 네트워크로 전송할 수 없다. 반드시 문자열로 변경되어야 가능하다..
+                });
+                */
+            }
 
             return (
                 <div id="wrapper">
                     <RegistForm bt="공지등록" onRegist={regist} />
                     <NoticeList noticeList={noticeList} onSelectOne={selectOne}/>
-                    <DetailForm />
+                    <DetailForm notice={notice} onUpdate={update}/>
                 </div>
             )                
         }
