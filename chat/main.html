@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CDN React STOMP Chat</title>
+
+  <!-- React 18 UMD -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- Babel (브라우저에서 JSX 변환) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- SockJS + STOMP -->
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#0f1a2f;
+      --panel2:#0d172b;
+      --text:#e6edf7;
+      --muted:#9fb0c6;
+      --border:rgba(255,255,255,.08);
+      --accent:#4f8cff;
+      --danger:#ff4f6d;
+      --ok:#31d0aa;
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+      --radius:16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      background: radial-gradient(1200px 700px at 20% 0%, rgba(79,140,255,.20), transparent 60%),
+                  radial-gradient(900px 600px at 80% 10%, rgba(49,208,170,.12), transparent 60%),
+                  var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+
+    .app{
+      width:min(1100px, 100%);
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap:16px;
+    }
+    @media (max-width: 920px){
+      .app{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    .cardHeader{
+      padding:16px 16px 12px;
+      border-bottom:1px solid var(--border);
+      background: rgba(255,255,255,.02);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .title{
+      display:flex; flex-direction:column; gap:4px;
+    }
+    .title h1{
+      margin:0; font-size:16px; letter-spacing:.2px;
+    }
+    .title p{
+      margin:0; font-size:12px; color:var(--muted);
+    }
+
+    .badge{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      display:flex; align-items:center; gap:8px;
+      white-space:nowrap;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:50%;
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(255,79,109,.12);
+    }
+    .dot.ok{
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(49,208,170,.12);
+    }
+
+    .cardBody{ padding:16px; }
+
+    .form{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    label{
+      font-size:12px;
+      color: var(--muted);
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .hint{ font-family: var(--mono); font-size:11px; color: rgba(159,176,198,.9); }
+    input, select, textarea{
+      width:100%;
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.18);
+      color: var(--text);
+      outline:none;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    input:focus, textarea:focus{
+      border-color: rgba(79,140,255,.55);
+      box-shadow: 0 0 0 4px rgba(79,140,255,.12);
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width: 920px){
+      .row{ grid-template-columns: 1fr; }
+    }
+
+    .btnRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    button{
+      cursor:pointer;
+      border:none;
+      padding:12px 14px;
+      border-radius:12px;
+      color: var(--text);
+      background: rgba(255,255,255,.06);
+      border:1px solid var(--border);
+      transition: transform .04s ease, background .15s ease, border-color .15s ease, opacity .15s ease;
+      font-weight:600;
+    }
+    button:hover{ background: rgba(255,255,255,.09); }
+    button:active{ transform: translateY(1px); }
+    button.primary{
+      background: linear-gradient(180deg, rgba(79,140,255,.95), rgba(79,140,255,.65));
+      border-color: rgba(79,140,255,.55);
+    }
+    button.danger{
+      background: linear-gradient(180deg, rgba(255,79,109,.95), rgba(255,79,109,.65));
+      border-color: rgba(255,79,109,.55);
+    }
+    button:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+    }
+
+    .split{
+      display:grid;
+      grid-template-rows: auto 1fr auto;
+      height: 76vh;
+      min-height: 560px;
+    }
+    @media (max-width: 920px){
+      .split{ height: 72vh; min-height: 520px; }
+    }
+
+    .messages{
+      padding:16px;
+      overflow:auto;
+      background: rgba(0,0,0,.12);
+    }
+    .msg{
+      display:flex;
+      gap:10px;
+      margin-bottom:12px;
+      align-items:flex-start;
+    }
+    .avatar{
+      width:34px; height:34px;
+      border-radius:12px;
+      background: rgba(255,255,255,.06);
+      border:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:800;
+      color: rgba(230,237,247,.9);
+      flex: 0 0 auto;
+    }
+    .bubble{
+      max-width: 78%;
+      background: rgba(255,255,255,.05);
+      border:1px solid var(--border);
+      padding:10px 12px;
+      border-radius: 14px;
+      box-shadow: 0 8px 18px rgba(0,0,0,.18);
+    }
+    .meta{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-bottom:6px;
+      color: var(--muted);
+      font-size:12px;
+    }
+    .meta b{ color: var(--text); font-weight:800; }
+    .content{
+      white-space: pre-wrap;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+    .sys{
+      margin: 10px 0 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border:1px dashed rgba(255,255,255,.18);
+      color: rgba(230,237,247,.9);
+      background: rgba(255,255,255,.03);
+      font-size: 13px;
+    }
+
+    .composer{
+      padding:12px;
+      border-top:1px solid var(--border);
+      background: rgba(255,255,255,.02);
+      display:flex;
+      gap:10px;
+      align-items:flex-end;
+    }
+    .composer textarea{
+      resize:none;
+      height: 46px;
+      max-height: 120px;
+      padding: 12px 12px;
+      line-height: 1.4;
+    }
+    .rightSmall{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      align-items:flex-end;
+    }
+    .small{
+      font-size:12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .footerNote{
+      margin-top:12px;
+      font-size:12px;
+      color: var(--muted);
+      line-height:1.45;
+    }
+    code{
+      font-family: var(--mono);
+      font-size: 11px;
+      background: rgba(255,255,255,.06);
+      border:1px solid var(--border);
+      padding:2px 6px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useMemo, useRef, useState } = React;
+
+    // ------------------------------
+    // 서버 주소/라우팅 규칙: 여기만 맞추시면 됩니다.
+    // ------------------------------
+    const DEFAULTS = {
+      // Spring Boot WebSocket(STOMP) 엔드포인트 (예: registry.addEndpoint("/ws").withSockJS())
+      WS_ENDPOINT: "http://localhost:8888/ws",
+
+      // "보내기" 목적지 (예: @MessageMapping("/chat.send") + setApplicationDestinationPrefixes("/pub"))
+      // => 클라이언트는 /pub/chat.send 로 SEND
+      SEND_DEST: "/pub/chat.send",
+
+      // "구독" 토픽 패턴 (예: convertAndSend("/sub/room."+roomId, ...))
+      // => 클라이언트는 /sub/room.{roomId} 로 SUBSCRIBE
+      SUB_DEST_PATTERN: (roomId) => `/sub/room.${roomId}`,
+    };
+
+    function nowHHmm() {
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return `${hh}:${mm}`;
+    }
+
+    function safeParseJson(payloadText) {
+      try { return JSON.parse(payloadText); } catch { return null; }
+    }
+
+    function initials(name) {
+      const s = (name || "?").trim();
+      if (!s) return "?";
+      // 한글/영문 둘 다 첫 글자 정도만
+      return s.slice(0, 1).toUpperCase();
+    }
+
+    // 서버가 어떤 포맷으로 보내든, 화면에 표시 가능한 "표준 메시지"로 정규화
+    function normalizeIncoming(frameBody, fallbackRoomId) {
+      const obj = typeof frameBody === "string" ? safeParseJson(frameBody) : frameBody;
+
+      // 권장 서버 포맷 예시:
+      // { type: "TALK", roomId: "101", sender: "devrun", message: "hi", sentAt: "2026-01-21T..." }
+      if (obj && typeof obj === "object") {
+        const type = obj.type || "TALK";
+        const roomId = obj.roomId ?? fallbackRoomId;
+        const sender = obj.sender || obj.writer || obj.nickname || "unknown";
+        const message = obj.message || obj.content || obj.text || "";
+        const sentAt = obj.sentAt || obj.time || "";
+        return { kind: type, roomId, sender, message, sentAt };
+      }
+
+      // 파싱 실패 시: 그냥 문자열로 처리
+      return { kind: "TALK", roomId: fallbackRoomId, sender: "unknown", message: String(frameBody || ""), sentAt: "" };
+    }
+
+    function App() {
+      const [wsEndpoint, setWsEndpoint] = useState(DEFAULTS.WS_ENDPOINT);
+      const [sendDest, setSendDest] = useState(DEFAULTS.SEND_DEST);
+      const [roomId, setRoomId] = useState("101");
+      const [nickname, setNickname] = useState("student1");
+
+      const [connected, setConnected] = useState(false);
+      const [connecting, setConnecting] = useState(false);
+
+      const [messages, setMessages] = useState([]);
+      const [draft, setDraft] = useState("");
+
+      const stompRef = useRef(null);
+      const subRef = useRef(null);
+
+      const scrollerRef = useRef(null);
+
+      const subDest = useMemo(() => DEFAULTS.SUB_DEST_PATTERN(roomId), [roomId]);
+
+      useEffect(() => {
+        // 메시지 추가 시 자동 스크롤
+        const el = scrollerRef.current;
+        if (!el) return;
+        el.scrollTop = el.scrollHeight;
+      }, [messages.length]);
+
+      function pushSystem(text) {
+        setMessages(prev => [...prev, { sys: true, text, at: nowHHmm() }]);
+      }
+
+      function pushChat(msg) {
+        setMessages(prev => [...prev, { sys: false, ...msg, at: nowHHmm() }]);
+      }
+
+      function disconnect() {
+        try {
+          if (subRef.current) {
+            subRef.current.unsubscribe();
+            subRef.current = null;
+          }
+          if (stompRef.current) {
+            stompRef.current.disconnect(() => {});
+            stompRef.current = null;
+          }
+        } catch (e) {}
+        setConnected(false);
+        setConnecting(false);
+        pushSystem("연결을 종료했습니다.");
+      }
+
+      function connect() {
+        if (connected || connecting) return;
+
+        setConnecting(true);
+        pushSystem("서버에 연결 중입니다...");
+
+        const sock = new SockJS(wsEndpoint);
+        const stomp = Stomp.over(sock);
+
+        // 콘솔 로그가 과하면 주석 해제/조절
+        stomp.debug = null;
+
+        stomp.connect(
+          // headers (필요하면 여기에 Authorization 등을 추가)
+          {},
+          (frame) => {
+            stompRef.current = stomp;
+            setConnected(true);
+            setConnecting(false);
+
+            pushSystem("연결 성공! 채팅방을 구독합니다...");
+
+            // 이전 구독이 있으면 정리
+            if (subRef.current) {
+              subRef.current.unsubscribe();
+              subRef.current = null;
+            }
+
+            // 구독
+            const sub = stomp.subscribe(subDest, (messageFrame) => {
+              const normalized = normalizeIncoming(messageFrame.body, roomId);
+
+              // 간단한 타입 처리 예시 (서버가 type을 보내는 경우)
+              if (normalized.kind === "ENTER") {
+                pushSystem(`${normalized.sender} 님이 입장했습니다.`);
+                return;
+              }
+              if (normalized.kind === "LEAVE") {
+                pushSystem(`${normalized.sender} 님이 퇴장했습니다.`);
+                return;
+              }
+
+              pushChat({
+                sender: normalized.sender,
+                message: normalized.message,
+                sentAt: normalized.sentAt
+              });
+            });
+
+            subRef.current = sub;
+
+            pushSystem(`구독 완료: ${subDest}`);
+          },
+          (error) => {
+            setConnected(false);
+            setConnecting(false);
+            pushSystem("연결 실패: 서버 주소/엔드포인트를 확인해 주세요.");
+            // 디버그용
+            // console.error("STOMP connect error:", error);
+          }
+        );
+      }
+
+      function resubscribeRoom() {
+        if (!connected || !stompRef.current) {
+          pushSystem("아직 연결되지 않았습니다. 먼저 연결해 주세요.");
+          return;
+        }
+
+        try {
+          if (subRef.current) {
+            subRef.current.unsubscribe();
+            subRef.current = null;
+          }
+
+          const stomp = stompRef.current;
+          const sub = stomp.subscribe(subDest, (messageFrame) => {
+            const normalized = normalizeIncoming(messageFrame.body, roomId);
+
+            if (normalized.kind === "ENTER") {
+              pushSystem(`${normalized.sender} 님이 입장했습니다.`);
+              return;
+            }
+            if (normalized.kind === "LEAVE") {
+              pushSystem(`${normalized.sender} 님이 퇴장했습니다.`);
+              return;
+            }
+
+            pushChat({
+              sender: normalized.sender,
+              message: normalized.message,
+              sentAt: normalized.sentAt
+            });
+          });
+
+          subRef.current = sub;
+          pushSystem(`방 변경/재구독 완료: ${subDest}`);
+          setMessages([]);
+        } catch (e) {
+          pushSystem("재구독 중 오류가 발생했습니다.");
+        }
+      }
+
+      function sendMessage() {
+        const text = (draft || "").trim();
+        if (!text) return;
+
+        if (!connected || !stompRef.current) {
+          pushSystem("연결되지 않았습니다. 메시지를 보낼 수 없습니다.");
+          return;
+        }
+
+        // 서버로 보낼 메시지 포맷 (서버 DTO와 맞추세요)
+        const payload = {
+          type: "TALK",
+          roomId,
+          sender: nickname,
+          message: text
+        };
+
+        try {
+          stompRef.current.send(sendDest, {}, JSON.stringify(payload));
+          setDraft("");
+        } catch (e) {
+          pushSystem("전송 실패: 연결 상태를 확인해 주세요.");
+        }
+      }
+
+      function onComposerKeyDown(e) {
+        // Enter로 전송, Shift+Enter는 줄바꿈
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      }
+
+      return (
+        <div className="app">
+          {/* Left: Settings */}
+          <div className="card">
+            <div className="cardHeader">
+              <div className="title">
+                <h1>Chat Client (CDN + React + STOMP)</h1>
+                <p>Spring Boot WebSocket/STOMP 서버에 연결</p>
+              </div>
+              <div className="badge">
+                <span className={"dot " + (connected ? "ok" : "")}></span>
+                {connected ? "Connected" : connecting ? "Connecting" : "Disconnected"}
+              </div>
+            </div>
+
+            <div className="cardBody">
+              <div className="form">
+                <div>
+                  <label>
+                    WebSocket Endpoint
+                    <span className="hint">예: http://localhost:8888/ws</span>
+                  </label>
+                  <input
+                    value={wsEndpoint}
+                    onChange={(e) => setWsEndpoint(e.target.value)}
+                    placeholder="http://localhost:8888/ws"
+                    disabled={connected || connecting}
+                  />
+                </div>
+
+                <div className="row">
+                  <div>
+                    <label>
+                      Room ID
+                      <span className="hint">구독: /sub/room.{roomId}</span>
+                    </label>
+                    <input
+                      value={roomId}
+                      onChange={(e) => setRoomId(e.target.value)}
+                      placeholder="101"
+                      disabled={connecting}
+                    />
+                  </div>
+
+                  <div>
+                    <label>
+                      Nickname
+                      <span className="hint">sender 로 전송</span>
+                    </label>
+                    <input
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      placeholder="student1"
+                      disabled={connecting}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label>
+                    SEND Destination
+                    <span className="hint">예: /pub/chat.send</span>
+                  </label>
+                  <input
+                    value={sendDest}
+                    onChange={(e) => setSendDest(e.target.value)}
+                    placeholder="/pub/chat.send"
+                    disabled={connected || connecting}
+                  />
+                </div>
+
+                <div className="btnRow">
+                  <button className="primary" onClick={connect} disabled={connected || connecting}>
+                    연결
+                  </button>
+                  <button onClick={resubscribeRoom} disabled={!connected || connecting}>
+                    방 변경/재구독
+                  </button>
+                  <button className="danger" onClick={disconnect} disabled={!connected && !connecting}>
+                    연결 종료
+                  </button>
+                </div>
+
+                <div className="footerNote">
+                  <div>현재 구독 주소: <code>{subDest}</code></div>
+                  <div style={{marginTop:"8px"}}>
+                    서버 규칙이 다르면 아래 3개를 서버와 맞춰주세요:
+                    <div style={{marginTop:"6px"}}>
+                      <code>엔드포인트</code> {`/ws`} · <code>전송</code> {`/pub/chat.send`} · <code>구독</code> {`/sub/room.{roomId}`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Chat */}
+          <div className="card split">
+            <div className="cardHeader">
+              <div className="title">
+                <h1>Room #{roomId}</h1>
+                <p>{connected ? "실시간 채팅 중" : "연결 후 이용 가능합니다"}</p>
+              </div>
+              <div className="badge" title="메시지 포맷 예시(서버와 맞추세요)">
+                <span className="hint">{`{ type, roomId, sender, message }`}</span>
+              </div>
+            </div>
+
+            <div className="messages" ref={scrollerRef}>
+              {messages.length === 0 && (
+                <div className="sys">
+                  아직 메시지가 없습니다. 좌측에서 연결 후 메시지를 보내보세요.
+                </div>
+              )}
+
+              {messages.map((m, idx) => {
+                if (m.sys) {
+                  return (
+                    <div key={idx} className="sys">
+                      <b style={{color:"var(--text)"}}>[{m.at}]</b> {m.text}
+                    </div>
+                  );
+                }
+
+                const mine = (m.sender || "") === nickname;
+                return (
+                  <div key={idx} className="msg" style={{flexDirection: mine ? "row-reverse" : "row"}}>
+                    <div className="avatar" title={m.sender}>{initials(m.sender)}</div>
+                    <div className="bubble" style={{
+                      background: mine ? "rgba(79,140,255,.16)" : "rgba(255,255,255,.05)",
+                      borderColor: mine ? "rgba(79,140,255,.28)" : "var(--border)"
+                    }}>
+                      <div className="meta" style={{justifyContent: mine ? "flex-end" : "flex-start"}}>
+                        <b>{m.sender}</b>
+                        <span>·</span>
+                        <span>{m.sentAt ? m.sentAt : m.at}</span>
+                      </div>
+                      <div className="content">{m.message}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="composer">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={onComposerKeyDown}
+                placeholder={connected ? "메시지를 입력하세요 (Enter 전송 / Shift+Enter 줄바꿈)" : "연결 후 입력 가능합니다"}
+                disabled={!connected}
+              />
+              <div className="rightSmall">
+                <button className="primary" onClick={sendMessage} disabled={!connected || !(draft || "").trim()}>
+                  전송
+                </button>
+                <div className="small">{connected ? "Enter: send" : "offline"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+  </script>
+</body>
+</html>
+hat

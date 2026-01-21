@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <title>Step1 - WebSocket Echo (React CDN)</title>
+
+    <!-- React CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel (JSX 변환용) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        button {
+            margin-right: 5px;
+        }
+        input {
+            width: 300px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+function App() {
+    const wsRef = useRef(null);
+
+    const [status, setStatus] = useState("DISCONNECTED");
+    const [input, setInput] = useState("");
+    const [messages, setMessages] = useState([]);
+
+    const connect = () => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            return;
+        }
+
+        const ws = new WebSocket("ws://localhost:9991/ws/echo");
+        wsRef.current = ws;
+
+        setStatus("CONNECTING");
+
+        ws.onopen = () => setStatus("CONNECTED");
+        ws.onclose = () => setStatus("DISCONNECTED");
+        ws.onerror = () => setStatus("ERROR");
+
+        ws.onmessage = (event) => {
+            setMessages(prev => [...prev, event.data]);
+        };
+    };
+
+    const disconnect = () => {
+        if (wsRef.current) {
+            wsRef.current.close();
+            wsRef.current = null;
+        }
+    };
+
+    const sendMessage = () => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            alert("WebSocket이 연결되어 있지 않습니다.");
+            return;
+        }
+        wsRef.current.send(input);
+        setInput("");
+    };
+
+    // 최초 1회 자동 연결
+    useEffect(() => {
+        connect();
+        return () => disconnect();
+    }, []);
+
+    return (
+        <div style={{ padding: "20px" }}>
+            <h2>Step 1 - WebSocket Echo</h2>
+
+            <div>
+                <b>Status:</b> {status}
+            </div>
+
+            <div style={{ marginTop: "10px" }}>
+                <button onClick={connect}>Connect</button>
+                <button onClick={disconnect}>Disconnect</button>
+            </div>
+
+            <div style={{ marginTop: "10px" }}>
+                <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    placeholder="메시지 입력"
+                />
+                <button onClick={sendMessage}>Send</button>
+            </div>
+
+            <div style={{ marginTop: "20px" }}>
+                <h4>Received Messages</h4>
+                <ul>
+                    {messages.map((msg, idx) => (
+                        <li key={idx}>{msg}</li>
+                    ))}
+                </ul>
+            </div>
+        </div>
+    );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+
+</body>
+</html>
