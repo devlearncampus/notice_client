@@ -150,14 +150,37 @@
         function DetailForm(props){
             
             function handleEdit(){
+                //유효성 체크 후 수정 요청 
 
+                //자바스크립트의 불리언 강제 변환 문법 
+                /* 
+                    !0  -       true
+                    !1  -       false
+                    !"" -       true
+                    !"zino"    false
+                    !null       true
+                
+                    !!의 의미 -  불리언 타입으로 강제 변환만 수행 
+
+                    !!0                 false
+                    !!1                 true
+                    !!""                false
+                    !!"abc"             true
+                    !!undefined  false
+                    !!{}            true    비어있기는 하지만, 객체는 존재함 그래서 논리값을 변환했을경우 true로 인정 
+                */
+                const selectedId = !! props.notice.noticeId;//noticeId에 값이 없을 경우엔  false로  처리 
+                
+                if(selectedId==false){
+                    alert("수정하고싶은 게시물을 먼저 선택하세요");
+                }    
                 const payload={
                     title:"수정제목",
                     writer:"수정한자",
                     content:"수정내용 "    
                 }
-
-                props.onUpdate(payload); //props로 전달된  onUpdate 변수명이  update함수를 참조하므로...      
+                
+                props.onUpdate(props.notice.noticeId , payload); //props로 전달된  onUpdate 변수명이  update함수를 참조하므로...      
             }
             
             function handleDelete(){
@@ -250,18 +273,28 @@
             /*---------------------------------------------
             수정하기
             ---------------------------------------------*/
-            function update(payload){
+            function update(noticeId, payload){
                 //alert("부모컴포넌트인 App의 update() 호출");
-                console.log("수정할 내용은 ", payload);
-                
+                console.log("수정할 내용은 ", payload, " noticeId=", noticeId);
+
                 //웹브라우저에서 지원하는 비동기 통신 함수, 장점? 외부 라이브러리인 JQuery에 의존하지 않음 
-                /*
-                fetch("http://localhost:9999/api/notices", {
+                
+                fetch(`http://localhost:9999/api/notices/${noticeId}` , {
                     method:"PUT",
                     headers:{"Content-Type":"application/json"},
                     body:JSON.stringify(payload)  //객체는 그 자체를 네트워크로 전송할 수 없다. 반드시 문자열로 변경되어야 가능하다..
+                })
+                //서버로부터 응답이 오면, 아래의 then()이 수행, 하지만 수정 요청 자체가 성공  or 실패인지는 then() 안에서 판단해야함
+                .then(res =>{
+                    if(!res.ok) throw new Error("수정실패 ");
+                    return res.json(); //서버가 json문자열을 전송했다는 전제로 이 메서드 호출 
+                })
+                .then( updated =>{
+                    console.log("수정 결과로 응답받은 데이터 ", updated);
+                })
+                .catch( err =>{
+                    console.log(err);
                 });
-                */
             }
 
             return (
