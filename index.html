@@ -153,6 +153,8 @@
             const [writer, setWriter]=React.useState(""); 
             const [content, setContent]=React.useState(""); 
             
+            const selectedId = !! props.notice.noticeId;//noticeId에 값이 없을 경우엔  false로  처리 
+
             /*--------------------------------------------------------
             아래의 부수효과를 일으키는 메서드인 useEffect()가 실행되는 시점 
             1) 컴포넌트가 최초로 렌더링 되는 시점 
@@ -185,7 +187,7 @@
                     !!undefined  false
                     !!{}            true    비어있기는 하지만, 객체는 존재함 그래서 논리값을 변환했을경우 true로 인정 
                 */
-                const selectedId = !! props.notice.noticeId;//noticeId에 값이 없을 경우엔  false로  처리 
+                
                 
                 if(selectedId==false){
                     alert("수정하고싶은 게시물을 먼저 선택하세요");
@@ -200,6 +202,12 @@
             }
             
             function handleDelete(){
+                if(!selectedId){
+                    alert("먼저 삭제하실 글을 선택하세요");
+                    return;
+                }
+                //부모인 App의 삭제 메서드 호출 
+                props.onDeleteOne(props.notice.noticeId);
             }
 
             return (
@@ -231,9 +239,7 @@
                  hit:0                
             });
 
-            function edit(){
-                
-            }                
+                    
             /*---------------------------------------------
             목록 가져오기 
             컴포넌트가 렌더링(화면에 등장) 된 직후에  실행해야 할 업무를 부수효과(side effect)를 다룰때 자주 사용되는 메서드 
@@ -310,26 +316,48 @@
                     //App가 현재 보유중인 바인드 변수인 noticeList를 새롭게 재배치하지 말고, 수정된 한건만 배열에 변화를 주면
                     //리엑트의 UI가 이 부분을 인식하여, 렌더링도 해당 부분만 수정하게 만들자..
                     //배열에 들어있는 객체들을 모두 지우고, 새롭게 메모리에 올리지말고, 변경된 배열의 요소만 교체하자 
-                    //이 작업을 위해서는 java언어에서는 컬렉션프레임웍  기술로 접근하면 되지만, js에서는 배열메서드로 처리
-                    //js의 배열메서드는 (선언적 프로그래밍 방법 중 특히 함수형 프로그래밍 방법이 반영되어있음)
-
+                    //이 작업을 위해서는 java언어에서는 컬렉션프레임웍 기술로 접근하면 되지만, js에서는 배열 메서드로 처리
+                    //js의 배열메서드는 (선언적 프로그래밍 방법 중 특히 함수형 프로그래밍 방법이 반영되어 있음)
                     //아래의 화살표함수의 prev 매개변수에는 기존 noticeList가 자동으로 리엑트에 의해 전달된다
                     //이유? 우리가 정의한 함수가 아닌 noticeList에 대한 setter이기 때문에...가능한 일..
                     //map() 기존 배열 요소를 접근하여, 새로운 배열을 반환함.이때 새로운 배열에 어떤 값을 넣을지는 
                     //개발자가 결정지을수 잇다..즉 반복문에 일일이 관여할수는 없고, 어떤 요소를 채울지만 관여..
                     setNoticeList(prev => prev.map(n => (n.noticeId ===updated.noticeId ? updated : n )) );    
-                    
+
                 })
                 .catch( err =>{
                     console.log(err);
                 });
             }
 
+            /*---------------------------------------------
+            한건 삭제 
+            ---------------------------------------------*/
+            function deleteOne(noticeId){
+                //alert("부모의 삭제 메서드 호출");
+
+                fetch(`http://localhost:9999/api/notices/${noticeId}`, { method:"DELETE"})
+                .then(res =>{   
+                    if(!res.ok) throw new Error("삭제 실패");
+                    //삭제 성공 시 서버에서는 대부분 204 상태코드인(No Cotent) 를 보낸 경우가 흔하므로, res.json()은 수행하지 않는다
+                })
+                .then( ()=>{
+                    //서버로부터 응답데이터가 없으므로, 그냥 목록 갱신만 처리하자 
+                    //filter() 메서드는 배열을 순회하면서 콜백이 true한 요소만 새로운 배열에 포함시킨다..
+                    //즉 삭제가 되지 않은 요소만 골라서 새로운 배열에 넣어줌 
+                    setNoticeList(prev => prev.filter(n => n.noticeId !==noticeId ))                                        
+                } )
+                .catch(err =>{
+                    console.log(err);                    
+                });
+
+            }
+
             return (
                 <div id="wrapper">
                     <RegistForm bt="공지등록" onRegist={regist} />
                     <NoticeList noticeList={noticeList} onSelectOne={selectOne}/>
-                    <DetailForm notice={notice} onUpdate={update}/>
+                    <DetailForm notice={notice} onUpdate={update} onDeleteOne={deleteOne}/>
                 </div>
             )                
         }
